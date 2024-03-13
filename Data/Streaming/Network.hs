@@ -111,6 +111,7 @@ import Data.Array.Unboxed ((!), UArray, listArray)
 import System.IO.Unsafe (unsafePerformIO, unsafeDupablePerformIO)
 import System.Random (randomRIO)
 import System.IO.Error (isFullErrorType, ioeGetErrorType)
+import qualified Debug.Trace as Debug
 #if WINDOWS
 import Control.Concurrent.MVar (putMVar, takeMVar, newEmptyMVar)
 #endif
@@ -408,9 +409,13 @@ getSocketFamilyTCP host' port' addrFamily = do
         NS.setSocketOption sock NS.NoDelay 1
         return sock
 
-    connect addrInfo = E.bracketOnError (createSocket addrInfo) NS.close $ \sock -> do
-        NS.connect sock (NS.addrAddress addrInfo)
-        return (sock, NS.addrAddress addrInfo)
+    connect addrInfo = do
+        Debug.traceM $ "Trying to connect to: " <> show addrInfo
+        E.bracketOnError (createSocket addrInfo) (\s -> do
+                            Debug.traceM $ "Error while connecting to: " <> show addrInfo
+                            NS.close s) $ \sock -> do
+          NS.connect sock (NS.addrAddress addrInfo)
+          return (sock, NS.addrAddress addrInfo)
 
 -- | Attempt to connect to the given host/port.
 getSocketTCP :: ByteString -> Int -> IO (NS.Socket, NS.SockAddr)
