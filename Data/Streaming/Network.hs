@@ -414,7 +414,10 @@ getSocketFamilyTCP host' port' addrFamily = do
         E.bracketOnError (createSocket addrInfo) (\s -> do
                             Debug.traceM $ "Error while connecting to: " <> show addrInfo
                             NS.close s) $ \sock -> do
-          NS.connect sock (NS.addrAddress addrInfo)
+          NS.connect sock (NS.addrAddress addrInfo) `E.catch` (\(E.SomeException e) -> do
+            Debug.traceM $ "Error while connecting to: " <> show addrInfo <> ", error: " <> E.displayException e
+            E.throwIO e)
+          Debug.traceM $ "Connected to: " <> show addrInfo
           return (sock, NS.addrAddress addrInfo)
 
 -- | Attempt to connect to the given host/port.
